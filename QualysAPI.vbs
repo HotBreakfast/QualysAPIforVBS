@@ -111,6 +111,52 @@ Function Stream_BinaryToString(Binary)
   Set BinaryStream = Nothing
 End Function
 
+function urlDecode(str)
+	dim ret,val,i
+	ret = replace(str,"+"," ")
+	for i = 0 to 128
+		if i < &H10 then
+			val = "%0" & hex(i)
+		else
+			val = "%" & hex(i)
+		end if
+		if i <> &H25 then
+			ret = replace (ret,val,chr(i))
+		end if
+	next
+	val = "%25"
+	i = &h25
+	ret = replace (ret,val,chr(i))
+	urlDecode = ret
+end function
+
+function urlEncode(str)
+	dim ret
+	ret = ""
+	for i = 1 to len(str)
+		c = Mid(str,i,1)
+		ic = asc(c)
+		if ic >= &h41 and ic <= &h7a then
+			'A-z
+			ret = ret & c
+		elseif ic >= &h30 and ic <= &h39 then
+			'0-9
+			ret = ret & c
+		elseif ic = &h2d or ic = &h2e or ic = &h5f or ic = &h7e then
+			' - . _ ~
+			ret = ret & c
+		elseif ic = &h20 then
+			' space
+			ret = ret & "+"
+		elseif ic < &h10 then
+			ret = ret & "%0" & hex(ic)
+		else
+			ret = ret & "%" & hex(ic)
+		end if
+	next
+	urlEncode = ret
+end function
+
 Function xmlGET(URL, httpuser, httppass)
 	Dim oHTTPreq
         Set oHTTPreq = CreateObject("WinHttp.WinHttpRequest.5.1")
@@ -135,6 +181,30 @@ Function xmlGET(URL, httpuser, httppass)
 	Set oHTTPreq = Nothing
 End Function
 
+Function xmlPost(URL, data, httpuser, httppass)
+	Dim oHTTPreq
+        Set oHTTPreq = CreateObject("WinHttp.WinHttpRequest.5.1")
+	oHTTPreq.SetTimeouts 10000, 10000, 10000, 10000
+
+	oHTTPreq.Open "POST", URL, false
+	if Proxy <> "" then
+		oHTTPreq.setProxy 2, Proxy
+	end if
+	'oHTTPreq.SetCredentials httpuser, httppass, 0
+	oHTTPreq.Option(WinHttpRequestOption_UserAgentString) = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)"
+	oHTTPreq.setRequestHeader "Content-type", "text/xml"
+	oHTTPreq.setRequestHeader "Translate", "f"
+	oHTTPreq.setRequestHeader "X-Requested-With", "VBScript"
+	if httpuser <> "" then
+		oHTTPreq.setRequestHeader "Authorization", "Basic " & base64encode(httpuser & ":" & httppass)
+	end if
+	oHTTPreq.send data
+	
+	 'wscript.echo oHTTPreq.status
+	xmlPost = oHTTPreq.responseText
+	Set oHTTPreq = Nothing
+End Function
+
 Class QualysMapReport
 	dim username, company, date, title, target, duration, scanner, status
 	dim optionprofile
@@ -142,7 +212,11 @@ Class QualysMapReport
 end Class
 
 Class QualysHost
-	dim assetID, name, os, netbios, ip, trackmethod, comments, lastVMScan, lastPCScan
+	dim assetID, name, os, netbios, ip, trackmethod, comments, lastVMScan, lastPCScan, vulns
+	
+	function vulnCount()
+		'TODO: vulnerability Count
+	end function
 end class
 
 function listAssetsIPs()
@@ -400,6 +474,178 @@ function getLastWeekMapDetectedHosts()
 	set getLastWeekMapDetectedHosts = detectedIPs
 end function
 
+dim lvl1cIcon, lvl2cIcon, lvl3cIcon, lvl4cIcon, lvl5cIcon
+dim lvl1pIcon, lvl2pIcon, lvl3pIcon, lvl4pIcon, lvl5pIcon
+dim lvl1iIcon, lvl2iIcon, lvl3iIcon, lvl4iIcon, lvl5iIcon
+
+lvl1cIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""10"" height=""10"" fill=""red"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl2cIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""20"" height=""10"" fill=""red"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl3cIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""30"" height=""10"" fill=""red"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl4cIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""40"" height=""10"" fill=""red"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl5cIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""red"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+
+lvl1pIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""10"" height=""10"" fill=""yellow"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl2pIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""20"" height=""10"" fill=""yellow"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl3pIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""30"" height=""10"" fill=""yellow"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl4pIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""40"" height=""10"" fill=""yellow"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl5pIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""yellow"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+
+lvl1iIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""10"" height=""10"" fill=""cyan"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl2iIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""20"" height=""10"" fill=""cyan"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl3iIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""30"" height=""10"" fill=""cyan"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl4iIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""40"" height=""10"" fill=""cyan"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+lvl5iIcon = "" &_
+"<svg xmlns=""http://www.w3.org/2000/svg"" width=""50"" height=""10""> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""cyan"" /> " & VbCrLf   &_
+" <rect x=""0"" y=""0"" width=""50"" height=""10"" fill=""none"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""10"" x2=""10"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""20"" x2=""20"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""30"" x2=""30"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""40"" x2=""40"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+" <line x1=""50"" x2=""50"" y=""0"" y2=""10"" stroke=""black"" stroke-width=""1"" /> " & VbCrLf   &_
+"</svg>"
+
+
 Class QualysVulInfo
 	dim qid, vulntype, severity, title, category, published, patchable, cvelist, diagnosis, consequence, solution, exploits, malware, ref
 end class
@@ -522,9 +768,208 @@ function getMVulnsInfo(qids)
 			info.ref.add reflist.getElementsByTagName("ID").item(0).text
 		next
 		On error goto 0
-		Wscript.echo info.qid & " " & TypeName(info.qid)
+		 'Wscript.echo info.qid & " " & TypeName(info.qid)
 		if TypeName(info.qid) = "Long" and not getMVulnsInfo.exists(info.qid) then
 			getMVulnsInfo.add info.qid, info
 		end if
 	next
+end function
+
+class QualysVMDetection
+	dim qid, dtype, severity, ssl, port, proto, status, results, firstFound, lastFound, lastTest, lastUpdate
+	
+	function getIcon()
+		dim icon
+		select case severity
+		case 1
+			if dtype = "Confirmed" then
+				icon = lvl1cIcon
+			else 
+				if dtype= "Potential" then
+					icon = lvl1pIcon
+				else
+					icon = lvl1iIcon
+				end if
+			end if
+		case 2
+			if dtype = "Confirmed" then
+				icon = lvl2cIcon
+			else
+				if dtype= "Potential" then
+					icon = lvl2pIcon
+				else
+					icon = lvl2iIcon
+				end if
+			end if
+		case 3
+			if dtype = "Confirmed" then
+				icon = lvl3cIcon
+			else
+				if dtype= "Potential" then
+					icon = lvl3pIcon
+				else
+					icon = lvl3iIcon
+				end if
+			end if
+		case 4
+			if dtype = "Confirmed" then
+				icon = lvl4cIcon
+			else
+				if dtype= "Potential" then
+					icon = lvl4pIcon
+				else
+					icon = lvl4iIcon
+				end if
+			end if
+		case 5
+			if dtype = "Confirmed" then
+				icon = lvl5cIcon
+			else
+				if dtype= "Potential" then
+					icon = lvl5pIcon
+				else
+					icon = lvl5iIcon
+				end if
+			end if
+		case else
+			if dtype = "Confirmed" then
+				icon = lvl1cIcon
+			else
+				if dtype= "Potential" then
+					icon = lvl1pIcon
+				else
+					icon = lvl1iIcon
+				end if
+			end if
+		end select
+		getIcon = icon
+	end function
+end class
+
+function getHostVMDetections(host)
+	dim response,xml, detectlist, detection
+	response = xmlGET("https://qualysapi.qualys.com/api/2.0/fo/asset/host/vm/detection/?action=list&show_igs=1&ips=" & host,quser,qpass)
+	Set xml = CreateObject("Microsoft.XMLDOM") 
+	xml.async = False 
+	xml.loadXML response
+	set getHostVMDetections = CreateObject("System.Collections.ArrayList")
+	Set detectlist = xml.getElementsByTagName("DETECTION")
+	for each detection in detectlist
+		dim vuln
+		set vuln = new QualysVMDetection
+		on error resume next
+		vuln.qid = Clng(detection.getElementsByTagName("QID").item(0).text)
+		vuln.dtype = detection.getElementsByTagName("TYPE").item(0).text
+		vuln.severity = Clng(detection.getElementsByTagName("SEVERITY").item(0).text)
+		vuln.port = Clng(detection.getElementsByTagName("PORT").item(0).text)
+		vuln.proto = detection.getElementsByTagName("PROTOCOL").item(0).text
+		vuln.ssl   = detection.getElementsByTagName("SSL").item(0).text
+		if detection.ssl = "1" then
+			detection.ssl = true
+		else
+			detection.ssl = false
+		end if
+		vuln.results = detection.getElementsByTagName("RESULTS").item(0).text
+		vuln.status = detection.getElementsByTagName("STATUS").item(0).text
+		vuln.firstFound = detection.getElementsByTagName("FIRST_FOUND_DATETIME").item(0).text
+		vuln.lastFound = detection.getElementsByTagName("LAST_FOUND_DATETIME").item(0).text
+		vuln.lastTest = detection.getElementsByTagName("LAST_TEST_DATETIME").item(0).text
+		vuln.lastUpdate = detection.getElementsByTagName("LAST_UPDATE_DATETIME").item(0).text
+		on error goto 0
+			if TypeName(vuln.qid) = "Long" then
+			getHostVMDetections.add vuln
+		end if
+	next
+end function
+
+function getMHostsVMDetections(IPs)
+	if TypeName(IPs) <> "ArrayList" then
+		err.raise 8, "getMHostsVMDetections", "The argument must be an ArrayList of numbers. A '" & TypeName(IPs) & "' was found instead."
+	end if
+	set getMHostsVMDetections = CreateObject("Scripting.Dictionary")
+	dim response, xml, hostlist, host, detectlist, detection, query
+	query = ""
+	for each IP in IPs
+		if query = "" then
+			query = query & IP
+		else
+			query = query & "," & IP
+		end if
+	next
+	response = xmlGET("https://qualysapi.qualys.com/api/2.0/fo/asset/host/vm/detection/?action=list&show_igs=1&ips=" & query,quser,qpass)
+	Set xml = CreateObject("Microsoft.XMLDOM") 
+	xml.async = False 
+	xml.loadXML response
+	Set hostlist = xml.getElementsByTagName("HOST")
+	for each host in hostlist
+		dim h
+		set h = new QualysHost
+		On error resume next
+		h.assetID = host.getElementsByTagName("ID").item(0).text
+		h.ip = host.getElementsByTagName("IP").item(0).text
+		h.name = host.getElementsByTagName("DNS").item(0).text
+		h.os = host.getElementsByTagName("OS").item(0).text
+		h.trackmethod = host.getElementsByTagName("TRACKING_METHOD").item(0).text
+		h.netbios = host.getElementsByTagName("NETBIOS").item(0).text
+		h.lastVMScan = host.getElementsByTagName("LAST_SCAN_DATETIME").item(0).text
+		On error goto 0
+		set h.vulns = CreateObject("System.collections.ArrayList")
+		Set detectlist = host.getElementsByTagName("DETECTION")
+		for each detection in detectlist
+			dim vuln
+			set vuln = new QualysVMDetection
+			on error resume next
+			vuln.qid = Clng(detection.getElementsByTagName("QID").item(0).text)
+			vuln.dtype = detection.getElementsByTagName("TYPE").item(0).text
+			vuln.severity = Clng(detection.getElementsByTagName("SEVERITY").item(0).text)
+			vuln.port = Clng(detection.getElementsByTagName("PORT").item(0).text)
+			vuln.proto = detection.getElementsByTagName("PROTOCOL").item(0).text
+			vuln.ssl   = detection.getElementsByTagName("SSL").item(0).text
+			if detection.ssl = "1" then
+				detection.ssl = true
+			else
+				detection.ssl = false
+			end if
+			vuln.results = detection.getElementsByTagName("RESULTS").item(0).text
+			vuln.status = detection.getElementsByTagName("STATUS").item(0).text
+			vuln.firstFound = detection.getElementsByTagName("FIRST_FOUND_DATETIME").item(0).text
+			vuln.lastFound = detection.getElementsByTagName("LAST_FOUND_DATETIME").item(0).text
+			vuln.lastTest = detection.getElementsByTagName("LAST_TEST_DATETIME").item(0).text
+			vuln.lastUpdate = detection.getElementsByTagName("LAST_UPDATE_DATETIME").item(0).text
+			on error goto 0
+				if TypeName(vuln.qid) = "Long" then
+				h.vulns.add vuln
+			end if
+		next
+		if not getMHostsVMDetections.exists(h.ip) then
+			getMHostsVMDetections.add h.ip, h
+		end if
+	next
+end function
+
+function launchScoreCardReport(name,format,title)
+	dim ret,response
+	name = urlEncode(name)
+	title = urlEncode(title)
+	response = xmlPost("https://qualysapi.qualys.com/api/2.0/fo/report/scorecard/?action=launch&output_format=" & format & "&name=" & name & "&source=asset_groups&asset_groups=All&report_title=" & title,"",quser,qpass)
+	Set xml = CreateObject("Microsoft.XMLDOM") 
+	xml.async = False 
+	xml.loadXML response
+	dim txt, val
+	set txt = xml.getElementsByTagName("TEXT")
+	set val = xml.getElementsByTagName("VALUE")
+	if txt.length > 0 and txt.item(0).text = "New scorecard launched" and val.length > 0 then
+		ret = CDbl(val.item(0).text)
+	elseif txt.length > 0 then
+		err.raise 8, "launchScoreCardReport", txt.item(0).text
+	else
+		err.raise 8, "launchScoreCardReport", "Error retrieving response text from QualysGuard"
+	end if
+	launchScoreCardReport = ret
+end function
+
+function fetchReport(id)
+	dim response
+	response = xmlPost("https://qualysapi.qualys.com/api/2.0/fo/report/?action=fetch&id=" & id,"",quser,qpass)
+	fetchReport = response
 end function
