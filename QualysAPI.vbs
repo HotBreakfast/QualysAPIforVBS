@@ -1,3 +1,6 @@
+'Qualys vbscript library by Chema Sanchez
+'April 2015
+
 dim Proxy
 Proxy = ""
 
@@ -212,7 +215,7 @@ Class QualysMapReport
 end Class
 
 Class QualysHost
-	dim assetID, name, os, netbios, ip, trackmethod, comments, lastVMScan, lastPCScan, vulns
+	dim assetID, name, os, netbios, ip, trackmethod, comments, lastVMScan, lastPCScan, vulns, discoveryMethods
 	
 	function vulnCount()
 		'TODO: vulnerability Count
@@ -396,6 +399,11 @@ function getMapDetectedLiveHosts(ref)
 				h.os = IP.getAttribute("os")
 				h.name = IP.getAttribute("name")
 				h.netbios = IP.getAttribute("netbios")
+				set h.discoveryMethods = CreateObject("System.Collections.ArrayList")
+				for each d in discoverylist
+					method = d.getAttribute("method")
+					h.discoveryMethods.add method
+				next
 				getMapDetectedLiveHosts.add h
 				exit for
 			end if
@@ -462,7 +470,7 @@ end function
 
 function getLastWeekMapDetectedHosts()
 	set detectedIPs = CreateObject("System.Collections.ArrayList")
-	qDateToday = toQualysTime(Date())
+	qDateToday = toQualysTime(DateAdd("d",Date(),1))
 	qDate7days = toQualysTime(DateAdd("d",Date(),-7))
 	set maplist = listMaps(qDate7days,qDateToday)
 	'getLastWeekMapDetectedIps = 0
@@ -693,11 +701,11 @@ function getVulnInfo(qid)
 	for each mlw in mlwlist
 		info.malware.add mlw.getElementsByTagName("MW_ID").item(0).text
 	next
-	dim reflist, ref
+	dim reflist, refe
 	set info.ref = CreateObject("System.Collections.ArrayList")
 	set reflist = vuln.getElementsByTagName("VENDOR_REFERENCE")
-	for each ref in reflist
-		info.ref.add reflist.getElementsByTagName("ID").item(0).text
+	for each refe in reflist
+		info.ref.add refe.getElementsByTagName("ID").item(0).text
 	next
 	On error goto 0
 	set getVulnInfo = info
